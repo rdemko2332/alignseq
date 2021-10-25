@@ -1,7 +1,7 @@
 from Bio import SeqIO
 import pprint
 import argparse
-#import shutil
+import shutil
 import os
 
 def collect_input_arguments():
@@ -17,14 +17,16 @@ def collect_input_arguments():
     
     return parser.parse_args()
 
+class Settings:
+    def __init__(self, infile, outfile, program):
+        self.infile = infile
+        # before proceeding to define more stuff, make sure this definition is ok!
+        # or, define a bunch, and then check a bunch.
+        self.outfile = outfile
+        self.program = program
+
+
 def make_settings_class(infile, outfile, program):
-    class Settings:
-        def __init__(self, infile, outfile, program):
-            self.infile = infile
-            # before proceeding to define more stuff, make sure this definition is ok!
-            # or, define a bunch, and then check a bunch.
-            self.outfile = outfile
-            self.program = program
     my_settings = Settings(infile,outfile, program)
     return(my_settings)
 
@@ -62,6 +64,9 @@ def main():
     if check_infile_exists(my_settings.infile) == True:
         my_sequences = Sequences(my_settings.infile, my_settings.outfile)
         print(my_sequences.translated)
+        if my_settings.program == 'mafft':
+            mafft_path = shutil.which("mafft")
+            os.system(mafft_path + " --quiet --preservecase " + my_settings.infile + " > " + my_settings.outfile)
     else:
         print('Input File Does Not Exist')
 
