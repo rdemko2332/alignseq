@@ -57,16 +57,20 @@ class Sequences:
             
         
             
-        # functions to do translation and backtranslation
-# function to write final alignment to file  - very flexible with arguments!
-
-#class Aligner:
-# functions to perform the alignment
-# functions to assert executables are there
-#    def check_mafft(): SPIELMAN REMAINS UNSURE WHERE THIS SHOULD GO, you'll find the way by coding and something will make sense eventually
-#        # This function should define the mafft path (shutil.which) and do the assert
-    
-#/home/demkor62/Downloads/nuc.fasta
+#class Aligner():
+#    def __init__(self, input, arguments, needed, to, form, the, command, including, settings, program, attribute):
+#        # defines the command that needs to be run
+#        command = ""
+#    
+#    
+#    def __call__(self):
+#        os.system(command)
+#  
+# use as:      
+#my_aligner = Aligner(input, arguments, needed, to, form, the, command)
+#my_aligner()
+        
+        
       
 def main():
     args = collect_input_arguments() 
@@ -74,6 +78,10 @@ def main():
     
     my_sequences = Sequences()
     my_sequences.translate_data(my_settings.infile)
+    
+    # Write translated sequences to a file. Write a Sequences() method for this
+    
+    # Perform alignment. Use new class Aligner() for this.   
     
     
     #os.system(mafft_path + " --quiet --preservecase " + my_settings.infile + " > " + my_settings.outfile)
