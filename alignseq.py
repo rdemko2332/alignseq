@@ -28,6 +28,9 @@ class Settings:
     
     
     def check_infile_exists(self):
+        """
+            Assert that the input file containing nucleotide sequences exists.
+        """
         assert os.path.exists(self.infile), "Path to infile does is incorrect."
 
     def check_program_exists(self):
