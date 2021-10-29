@@ -1,31 +1,33 @@
 from Bio import SeqIO
-import pprint
 import argparse
 import shutil
 import os
 
 def collect_input_arguments():
     """
-    This stuff is documenting the function.
+        Collecting input arguments at the command line for use later.
     """
 
     parser = argparse.ArgumentParser(prog= 'Alignseq', description='Align Codon Sequences', usage='%(prog)s [options]',epilog="And that's how you make an Alignment!")
     parser.add_argument('--inf', metavar='Infile', action='store', help='A input file of codons')
-    parser.add_argument('--outf', metavar='Outfile', action='store', help='A Output file (desired path) of codon Alignment')
+    parser.add_argument('--outf', metavar='Outfile', action='store', help='An Output file (desired path) of codon Alignment')
     parser.add_argument('--prog', metavar='Program', action='store', help='Desired program to Align Sequences', default='mafft')
-    #parser.add_argument('--act', metavar='Action', action='store', help='Action you want to do')
+    parser.add_argument('--args', metavar='Arguments', action='store', help='Arguments for the program you are  running', default= "--quiet --preservecase")
+    parser.add_argument('--outalign', metavar='Outfile Aligned', action='store', help='An Output file (desired path) for translated data')
     
     return parser.parse_args()
 
+
 class Settings:
-    def __init__(self, infile, outfile, program):
+    """
+        Creating Settings class. This will take it's arguments from the output of collect_input_arguments()
+    """
+    def __init__(self, infile, outfile, program, arguments, outalign):
         self.infile = infile
         self.outfile = outfile
         self.program = program
-        
-        check_infile_exists()
-        check_program_exists()
-    
+        self.arguments = arguments
+        self.outalign = outalign
     
     def check_infile_exists(self):
         """
@@ -34,57 +36,80 @@ class Settings:
         assert os.path.exists(self.infile), "Path to infile does is incorrect."
 
     def check_program_exists(self):
+        """
+            Assert that the program being used to align the sequences exists
+        """
         prog_path = shutil.which(self.program)
         assert prog_path is not None, "Cannot find alignment software."
 
 
         
 class Sequences:
-    def __init__(self):
+    """
+        Creating Sequences class. Will also take arguments from the output of collect_input_arguments()
+    """
+    def __init__(self, infile, outalign):
+        self.infile = infile
+        self.outalign = outalign
         # coming up eventually, not in init though!
         # self.aligned = {}
         # self.aligned_translated = {}
         
     def translate_data(self, infile):
+        """
+            Translating data from nucleotides to amino acids. Creates and fills two dictionaries, self.unaligned and self.aligned
+        """
         with open(infile, "r") as file_handle:
             records = list(SeqIO.parse(file_handle, "fasta"))
+            self.unaligned = {}
             self.unaligned_translated = {}
             for record in records:
                 self.unaligned[record.id] = record.seq
                 self.unaligned_translated[record.id] = record.seq.translate()
-            
-            
-            
-        
-            
-#class Aligner():
-#    def __init__(self, input, arguments, needed, to, form, the, command, including, settings, program, attribute):
-#        # defines the command that needs to be run
-#        command = ""
-#    
-#    
-#    def __call__(self):
-#        os.system(command)
-#  
-# use as:      
-#my_aligner = Aligner(input, arguments, needed, to, form, the, command)
-#my_aligner()
-        
-        
-      
+    
+    def write_translated_seqs_to_file(self):
+        """
+            Creates the file for aligned output as specified in collect_input_arguments() and appends the translated data to it
+        """
+        os.system("touch " + self.outalign)
+        file = open(self.outalign, "a")  # append mode
+        file.write(str(self.unaligned_translated))
+        file.close()
+
+    def __call__(self):
+        '''
+            Runs both functions when an instance is called as a function.
+        '''
+        self.translate_data(self.infile)
+        self.write_translated_seqs_to_file()
+
+
+class Aligner:
+    """
+        Creating the Aligned class. Will also take arguments from the arguments specified from collect_input_arguments(). Generates what will be called in os.system to run the alignment.
+    """
+    def __init__(self, infile, outfile, program, arguments):
+        self.infile = infile
+        self.outfile = outfile
+        self.program = program
+        self.arguments = arguments
+        '''
+            Defines the path for the specified alignment program
+        '''
+        program_path = shutil.which(self.program)
+        self.command = (program_path + " " + self.arguments + " " + self.infile + ">" + self.outfile)
+    
+    def __call__(self):
+        os.system(self.command)
+
+
 def main():
     args = collect_input_arguments() 
-    my_settings = Settings(args.inf, args.outf, args.prog)
-    
-    my_sequences = Sequences()
-    my_sequences.translate_data(my_settings.infile)
-    
-    # Write translated sequences to a file. Write a Sequences() method for this
-    
-    # Perform alignment. Use new class Aligner() for this.   
-    
-    
-    #os.system(mafft_path + " --quiet --preservecase " + my_settings.infile + " > " + my_settings.outfile)
+    my_settings = Settings(args.inf, args.outf, args.prog, args.args, args.outalign)
+    my_sequences = Sequences(my_settings.infile, my_settings.outalign)
+    my_sequences()
+    my_aligner = Aligner(my_settings.infile, my_settings.outfile, my_settings.program, my_settings.arguments)
+    my_aligner()   
 
 main()
 
