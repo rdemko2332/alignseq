@@ -30,8 +30,8 @@ class Settings:
         self.outtranslated = outtranslated
         
         # SPIELMAN: Need to perform assertions by calling those methods
-        check_infile_exists()
-        check_program_exists()
+        self.check_infile_exists()
+        self.check_program_exists()
     
     def check_infile_exists(self):
         """
@@ -61,10 +61,7 @@ class Sequences:
         Creating Sequences class. SPIELMAN: NOPE, DELETE THIS:  Will also take arguments from the output of collect_input_arguments()
     """
     def __init__(self):
-       # Spielman: NOPE! These are attributes of the Settings class. NOT SEQUENCES!
-       #self.infile = infile
-       # self.outfile = outfile
-       # self.outtranslated = outtranslated
+        return 0 
 
 
     def prepare_for_alignment(self, infile, temporary_file):
@@ -90,6 +87,7 @@ class Sequences:
         dictionary = {}
         for record in sequence_list:
             dictionary[record.id] = record.seq
+        return(dictionary)
                     
         
     def translate_sequences(self, infile): # SPIELMAN: See, we just pass infile as an argument. It's not a self.infile
@@ -107,16 +105,21 @@ class Sequences:
         """
             Creates the file for aligned output and appends the translated data to it
         """
-        os.system("touch " + temporary_file) # Spielman: ANY LUCK WITH TMP?
-        # Spielman: BELOW DOES NOT WORK, and "append" mode is DANGER! DANGER!
-        #file = open(self.unaligned_translated, "a")  # append mode
-        #file.write(str(self.unaligned_translated))
-        #file.close()
         with open(temporary_file, "w") as f:
             for record in self.unaligned_translated:
                 f.write(">" + str(record) + "\n" + str(self.unaligned_translated[record]) + "\n")
         
-    # def backtranslate_sequences(self, temporary_file)
+        
+    def read_in_aligned_data(self, filename, format = "fasta"):
+        list_of_aligned_aa = read_sequences_from_file(filename, format)
+        self.aligned_translated = convert_sequence_list_to_dictionary(list_of_aligned_aa)
+        
+        
+        
+        
+        
+    # def backtranslate_sequences(self, temporary_file2)  <- will read in out.fasta
+    
     # def save_sequences_to_file(self, aafile, nucfile)
                 
 
@@ -156,7 +159,7 @@ class Aligner:
         '''
 
         self.program_path = shutil.which(settings.program)
-        self.command = (self.program_path + " " + settings.arguments + " " + settings.infile + ">" + settings.outfile)
+        self.command = (self.program_path + " " + settings.arguments + " in.fasta > out.fasta")
     
     def __call__(self):
         os.system(self.command)
@@ -180,14 +183,14 @@ def main():
     
     # Initialize sequences and prepare for alignment
     my_sequences = Sequences() 
-    my_sequences.prepare_for_alignment(my_settings.infile, "SOME TEMPORARY FILE GOES HERE????")
+    my_sequences.prepare_for_alignment(my_settings.infile, "in.fasta") # writes to "out.fasta"
     
     # Perform alignment
     my_aligner = Aligner(my_settings)
     my_aligner()
     
     # Backtranslate
-    my_sequences.read_in_aligned_data(my_settings.outfile)   
+    my_sequences.read_in_aligned_data("out.fasta")   
     # my_sequences.perform_backtranslation()
     
     # Export
