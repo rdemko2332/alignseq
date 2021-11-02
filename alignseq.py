@@ -13,7 +13,7 @@ def collect_input_arguments():
     parser.add_argument('--outf', metavar='Outfile', action='store', help='An Output file (desired path) of codon Alignment')
     parser.add_argument('--prog', metavar='Program', action='store', help='Desired program to Align Sequences', default='mafft')
     parser.add_argument('--args', metavar='Arguments', action='store', help='Arguments for the program you are  running', default= "--quiet --preservecase")
-    parser.add_argument('--outalign', metavar='Outfile Aligned', action='store', help='An Output file (desired path) for translated data')
+    parser.add_argument('--outtranslated', metavar='Outfile for Translated Data', action='store', help='An Output file (desired path) for translated data')
     
     return parser.parse_args()
 
@@ -22,12 +22,12 @@ class Settings:
     """
         Creating Settings class. This will take it's arguments from the output of collect_input_arguments()
     """
-    def __init__(self, infile, outfile, program, arguments, outalign):
+    def __init__(self, infile, outfile, program, arguments, outtranslated):
         self.infile = infile
         self.outfile = outfile
         self.program = program
         self.arguments = arguments
-        self.outalign = outalign
+        self.outtranslated = outtranslated
     
     def check_infile_exists(self):
         """
@@ -48,12 +48,10 @@ class Sequences:
     """
         Creating Sequences class. Will also take arguments from the output of collect_input_arguments()
     """
-    def __init__(self, infile, outalign):
+    def __init__(self, infile, outfile, outtranslated):
         self.infile = infile
-        self.outalign = outalign
-        # coming up eventually, not in init though!
-        # self.aligned = {}
-        # self.aligned_translated = {}
+        self.outfile = outfile
+        self.outtranslated = outtranslated
         
     def translate_data(self, infile):
         """
@@ -71,10 +69,19 @@ class Sequences:
         """
             Creates the file for aligned output as specified in collect_input_arguments() and appends the translated data to it
         """
-        os.system("touch " + self.outalign)
-        file = open(self.outalign, "a")  # append mode
+        os.system("touch " + self.outtranslated)
+        file = open(self.outtranslated, "a")  # append mode
         file.write(str(self.unaligned_translated))
         file.close()
+
+    def read_in_aligned_data(self, outfile):
+        '''
+            Reads in the alignment data from the outfile specified in collect_input_arguments() that was created after the aligner instance was called
+        '''
+        self.aligned = {} 
+        records = list(SeqIO.parse(outfile, "fasta"))
+        for record in records:
+            self.aligned[record.id] = record.seq
 
     def __call__(self):
         '''
@@ -105,11 +112,12 @@ class Aligner:
 
 def main():
     args = collect_input_arguments() 
-    my_settings = Settings(args.inf, args.outf, args.prog, args.args, args.outalign)
-    my_sequences = Sequences(my_settings.infile, my_settings.outalign)
+    my_settings = Settings(args.inf, args.outf, args.prog, args.args, args.outtranslated)
+    my_sequences = Sequences(my_settings.infile, my_settings.outfile, my_settings.outtranslated)
     my_sequences()
     my_aligner = Aligner(my_settings.infile, my_settings.outfile, my_settings.program, my_settings.arguments)
-    my_aligner()   
+    my_aligner()
+    my_sequences.read_in_aligned_data(my_settings.outfile)   
 
 main()
 
