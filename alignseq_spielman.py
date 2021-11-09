@@ -47,49 +47,17 @@ class Settings:
         assert prog_path is not None, "Cannot find alignment software."
 
 
-        
-        
-        
-        
-        
-        
-        
-        
-        
 class Sequences:
     """
         Creating Sequences class. SPIELMAN: NOPE, DELETE THIS:  Will also take arguments from the output of collect_input_arguments()
     """
     def __init__(self):
-        return 0 
-
+        return None 
 
     def prepare_for_alignment(self, infile, temporary_file):
-        self.translate_data(infile)
+        self.translate_sequences(infile)
         self.write_translated_seqs_to_file(temporary_file)                
-                
-                
-        
-    def read_sequences_from_file(self, input_file, format = "fasta"):
-        """
-            Function to read in a file of sequences as a list.
-        """
-        with open(infile, "r") as file_handle:
-            records = list(SeqIO.parse(file_handle, format))
-        return(records)
-        
-        
-        
-    def convert_sequence_list_to_dictionary(self, sequence_list):
-        """
-            Convert a list of sequences into a dictionary of sequences, where key is the sequence ID.
-        """
-        dictionary = {}
-        for record in sequence_list:
-            dictionary[record.id] = record.seq
-        return(dictionary)
-                    
-        
+
     def translate_sequences(self, infile): # SPIELMAN: See, we just pass infile as an argument. It's not a self.infile
         """
             Translating sequences from nucleotides to amino acids. Creates and fills two dictionaries, self.unaligned and self.unaligned_translated
@@ -98,9 +66,8 @@ class Sequences:
         self.unaligned = self.convert_sequence_list_to_dictionary(records)
         self.unaligned_translated = {}
         for record_id in self.unaligned:
-            self.unaligned[record_id] = self.unaligned.seq[record_id].translate()
-    
-    
+            self.unaligned_translated[record_id] = self.unaligned[record_id].translate()
+
     def write_translated_seqs_to_file(self, temporary_file):
         """
             Creates the file for aligned output and appends the translated data to it
@@ -108,45 +75,32 @@ class Sequences:
         with open(temporary_file, "w") as f:
             for record in self.unaligned_translated:
                 f.write(">" + str(record) + "\n" + str(self.unaligned_translated[record]) + "\n")
-        
-        
+    
+    def read_sequences_from_file(self, infile, format = "fasta"):
+        """
+            Function to read in a file of sequences as a list.
+        """
+        with open(infile, "r") as file_handle:
+            records = list(SeqIO.parse(file_handle, format))
+        return(records)
+    
+    def convert_sequence_list_to_dictionary(self, sequence_list):
+        """
+            Convert a list of sequences into a dictionary of sequences, where key is the sequence ID.
+        """
+        dictionary = {}
+        for record in sequence_list:
+            dictionary[record.id] = record.seq
+        return(dictionary)
+    
     def read_in_aligned_data(self, filename, format = "fasta"):
-        list_of_aligned_aa = read_sequences_from_file(filename, format)
-        self.aligned_translated = convert_sequence_list_to_dictionary(list_of_aligned_aa)
+        list_of_aligned_aa = self.read_sequences_from_file(filename, format)
+        self.aligned_translated = self.convert_sequence_list_to_dictionary(list_of_aligned_aa)
         
-        
-        
-        
-        
-    # def backtranslate_sequences(self, temporary_file2)  <- will read in out.fasta
+    # def backtranslate_sequences(self, temporary_file2):
+    #     read_in_aligned_data  <- will read in out.fasta
     
     # def save_sequences_to_file(self, aafile, nucfile)
-                
-
-
-
-
-
-    # __call__ method here doesn't make "sense." What does it mean to <verb> a Sequence instance?
-    # def __call__(self, infile):
-    #     '''
-    #         Runs both functions when an instance is called as a function.
-    #     '''
-    #     self.translate_data(infile) 
-    #     self.write_translated_seqs_to_file()
-   
-   
-
-
-
-
-
-
-
-
-
-
-
 
 
 class Aligner:
@@ -157,23 +111,12 @@ class Aligner:
         '''
             Sets up Aligner instance.
         '''
-
+        
         self.program_path = shutil.which(settings.program)
         self.command = (self.program_path + " " + settings.arguments + " in.fasta > out.fasta")
     
     def __call__(self):
         os.system(self.command)
-
-
-
-
-
-
-
-
-
-
-
 
 
 def main():
@@ -190,7 +133,7 @@ def main():
     my_aligner()
     
     # Backtranslate
-    my_sequences.read_in_aligned_data("out.fasta")   
+    my_sequences.read_in_aligned_data("out.fasta")
     # my_sequences.perform_backtranslation()
     
     # Export
