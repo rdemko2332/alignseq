@@ -3,6 +3,8 @@ from Bio import AlignIO
 import argparse
 import shutil
 import os
+from tempfile import mkstemp
+
 
 def collect_input_arguments():
     """
@@ -30,11 +32,10 @@ class Settings:
         self.outfile = outfile
         self.program = program
         self.arguments = arguments
-        self.outtranslated = outtranslated
+        self.outtranslated = outtranslated  # None
         self.outtransaligned = outtransaligned
         self.outformat = outformat
         
-        # SPIELMAN: Need to perform assertions by calling those methods
         self.check_infile_exists()
         self.check_program_exists()
     
@@ -54,7 +55,7 @@ class Settings:
 
 class Sequences:
     """
-        Creating Sequences class. SPIELMAN: NOPE, DELETE THIS:  Will also take arguments from the output of collect_input_arguments()
+        Creating Sequences class. 
     """
     def __init__(self):
         return None 
@@ -63,7 +64,7 @@ class Sequences:
         self.translate_sequences(infile)
         self.write_translated_seqs_to_file(temporary_file)                
 
-    def translate_sequences(self, infile): # SPIELMAN: See, we just pass infile as an argument. It's not a self.infile
+    def translate_sequences(self, infile): 
         """
             Translating sequences from nucleotides to amino acids. Creates and fills two dictionaries, self.unaligned and self.unaligned_translated
         """
@@ -122,11 +123,12 @@ class Sequences:
         self.aligned_nuc = final
     
     def save_sequences_to_file(self, outfile, outputformat): #aa_aligned, nucfile
-        with open("hack.fasta", "w") as f:
+        temp_file_handle, temp_file_path = mkstemp()
+        with open(temp_file_path, "w") as f:
             for record in self.aligned_nuc:
                 f.write(">" + str(record) + "\n" + str(self.aligned_nuc[record]) + "\n")
-        AlignIO.convert("hack.fasta", "fasta", outfile, outputformat)
-    #AlignIO.convert(input, input "out.fasta"format, output, output format)
+        AlignIO.convert(temp_file_path, "fasta", outfile, outputformat)
+        os.close(temp_file_handle)    
 
 
 class Aligner:
@@ -140,7 +142,12 @@ class Aligner:
         self.program_path = shutil.which(settings.program)
         #print(settings.outtransaligned)
         #print(settings.outfile)
-        self.command = (self.program_path + " " + settings.arguments + " " +settings.outtranslated + ">" + " " + settings.outtransaligned)
+        self.command = (self.program_path + " " + settings.arguments + " " +settings.outtranslated + " > " + settings.outtransaligned)
+        # " ".join([self.program_path, settings.arguments, settings.outtranslated, ">", settings.outtransaligned])
+    
+    
+    
+    
     
     def __call__(self):
         os.system(self.command)
@@ -171,7 +178,59 @@ def main():
 main()
 
 # Example Usage For Me
-#python3 alignseq_spielman.py --inf /home/demkor62/Desktop/alignseq/practice_backtranslation/unaligned_nuc.fasta --outtranslated /home/demkor62/Desktop/alignseq/out.fasta --outtransaligned /home/demkor62/Desktop/new_alignment.fasta --outf /home/demkor62/Desktop/new_alignment.fasta 
+#python3 alignseq.py --inf example.fasta --outtranslated outtranslated.fasta --outtransaligned outtransaligned.fasta --outf new_alignment.fasta 
+
+
+"""
+
+In Settings() make a function: check_outfiles()
+
+If the files are None (self.outtranslated is None) then define as follows...
+if this is my infile:
+infile.fasta
+
+# the outtranslated will be:
+infile.fasta.translated # outtranslated default
+
+infile.fasta.translated_aligned # outtransaligned default
+
+infile.fasta.aligned # outfile default
+
+
+ALSO DO THESE THINGS:
++ when you run without args like python3 alignseq.py, **the help should come up** not an error
++ make a MafftAligner child class (and ClustalOmegaAligner????) to inherit from Aligner parent. All the parent should define is self.program_path. Rest is in child.
++ optimize write_sequences_to_file (needs argument not self)
++ docstrings everywhere
+"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
