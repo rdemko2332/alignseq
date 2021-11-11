@@ -21,9 +21,9 @@ def write_translated_seqs_to_file(sequences, temporary_file):
             f.write(">" + str(record) + "\n" + str(sequences[record]) + "\n")
     
 
-nuc_unaligned = convert_sequence_list_to_dictionary(list(SeqIO.parse("unaligned_nuc.fasta", "fasta"))) # a user provides
-#aa_unaligned = convert_sequence_list_to_dictionary(list(SeqIO.parse("unaligned_aa.fasta", "fasta"))    # your code translates
-aa_aligned = convert_sequence_list_to_dictionary(list(SeqIO.parse("aligned_aa.fasta", "fasta")))  # mafft makes this!!
+nuc_unaligned = convert_sequence_list_to_dictionary(list(SeqIO.parse("/home/demkor62/Desktop/alignseq/practice_backtranslation/unaligned_nuc.fasta", "fasta"))) # a user provides
+#aa_unaligned = convert_sequence_list_to_dictionary(list(SeqIO.parse("/home/demkor62/Desktop/alignseq/practice_backtranslation/unaligned_aa.fasta", "fasta")))    # your code translates
+aa_aligned = convert_sequence_list_to_dictionary(list(SeqIO.parse("/home/demkor62/Desktop/alignseq/practice_backtranslation/aligned_aa.fasta", "fasta")))  # mafft makes this!!
 #nuc_aligned = convert_sequence_list_to_dictionary(list(SeqIO.parse("aligned_nuc.fasta", "fasta")))   # YOU NEED TO MAKE THIS
 
 
@@ -48,17 +48,18 @@ for id in aa_aligned:
         aligned_nuc_sequence += new_codon
     print(aligned_nuc_sequence)
     final[id] = aligned_nuc_sequence
-print(final) # THIS IS IT YAY!!!
+print(final)
     
     
     
 # Write to file in Spielman hack!
 write_translated_seqs_to_file(final, "hack.fasta")
 AlignIO.convert("hack.fasta", "fasta", "hack.phy", "phylip-relaxed")
-# AlignIO.convert(input, input format, output, output format)
-    
-    
-    
+#AlignIO.convert(input, input format, output, output format)
+
+program_path = shutil.which("mafft")
+print(program_path)
+os.system(program_path + " " + "--quiet --preservecase" + " /home/demkor62/Desktop/alignseq/out.fasta " > " /home/demkor62/Desktop/new_alignment.fasta")
     
     
     

@@ -1,4 +1,5 @@
 from Bio import SeqIO
+from Bio import AlignIO
 import argparse
 import shutil
 import os
@@ -14,7 +15,9 @@ def collect_input_arguments():
     parser.add_argument('--prog', metavar='Program', action='store', help='Desired program to Align Sequences', default='mafft')
     parser.add_argument('--args', metavar='Arguments', action='store', help='Arguments for the program you are  running', default= "--quiet --preservecase")
     parser.add_argument('--outtranslated', metavar='Outfile for Translated Data', action='store', help='An Output file (desired path) for translated data')
-    
+    parser.add_argument('--outtransaligned', metavar='Outfile for Translated and Aligned Data', action='store', help='An Output file (desired path) for translated and aligned data')
+    parser.add_argument('--outformat', metavar='Output Format', action='store', help='An Output Format', default = "fasta")
+
     return parser.parse_args()
 
 
@@ -22,12 +25,14 @@ class Settings:
     """
         Creating Settings class. This will take its arguments from the output of collect_input_arguments()
     """
-    def __init__(self, infile, outfile, program, arguments, outtranslated):
+    def __init__(self, infile, outfile, program, arguments, outtranslated, outtransaligned, outformat):
         self.infile = infile
         self.outfile = outfile
         self.program = program
         self.arguments = arguments
         self.outtranslated = outtranslated
+        self.outtransaligned = outtransaligned
+        self.outformat = outformat
         
         # SPIELMAN: Need to perform assertions by calling those methods
         self.check_infile_exists()
@@ -64,9 +69,11 @@ class Sequences:
         """
         records = self.read_sequences_from_file(infile)
         self.unaligned = self.convert_sequence_list_to_dictionary(records)
+        #print("self.unaligned -> ", self.unaligned)
         self.unaligned_translated = {}
         for record_id in self.unaligned:
             self.unaligned_translated[record_id] = self.unaligned[record_id].translate()
+        #print("self.unaligned_translated ->", self.unaligned_translated)
 
     def write_translated_seqs_to_file(self, temporary_file):
         """
@@ -97,10 +104,29 @@ class Sequences:
         list_of_aligned_aa = self.read_sequences_from_file(filename, format)
         self.aligned_translated = self.convert_sequence_list_to_dictionary(list_of_aligned_aa)
         
-    # def backtranslate_sequences(self, temporary_file2):
-    #     read_in_aligned_data  <- will read in out.fasta
+    def backtranslate_sequences(self):
+        final = {}
+        for id in self.aligned_translated:
+            aligned_nuc_sequence = ""
+            aligned_aa_sequence = self.aligned_translated[id]
+            unaligned_nuc_sequence = self.unaligned[id]
+            nuc_index = 0
+            for aa in aligned_aa_sequence:
+                if aa == "-":
+                    new_codon = "---"
+                else:
+                    new_codon = unaligned_nuc_sequence[nuc_index:nuc_index+3]
+                    nuc_index += 3
+                aligned_nuc_sequence += new_codon
+            final[id] = aligned_nuc_sequence
+        self.aligned_nuc = final
     
-    # def save_sequences_to_file(self, aafile, nucfile)
+    def save_sequences_to_file(self, outfile, outputformat): #aa_aligned, nucfile
+        with open("hack.fasta", "w") as f:
+            for record in self.aligned_nuc:
+                f.write(">" + str(record) + "\n" + str(self.aligned_nuc[record]) + "\n")
+        AlignIO.convert("hack.fasta", "fasta", outfile, outputformat)
+    #AlignIO.convert(input, input "out.fasta"format, output, output format)
 
 
 class Aligner:
@@ -111,9 +137,10 @@ class Aligner:
         '''
             Sets up Aligner instance.
         '''
-        
         self.program_path = shutil.which(settings.program)
-        self.command = (self.program_path + " " + settings.arguments + " in.fasta > out.fasta")
+        #print(settings.outtransaligned)
+        #print(settings.outfile)
+        self.command = (self.program_path + " " + settings.arguments + " " +settings.outtranslated + ">" + " " + settings.outtransaligned)
     
     def __call__(self):
         os.system(self.command)
@@ -122,24 +149,31 @@ class Aligner:
 def main():
     # Collect input
     args = collect_input_arguments() 
-    my_settings = Settings(args.inf, args.outf, args.prog, args.args, args.outtranslated)
+    my_settings = Settings(args.inf, args.outf, args.prog, args.args, args.outtranslated, args.outtransaligned, args.outformat)
     
     # Initialize sequences and prepare for alignment
     my_sequences = Sequences() 
-    my_sequences.prepare_for_alignment(my_settings.infile, "in.fasta") # writes to "out.fasta"
+    my_sequences.prepare_for_alignment(my_settings.infile, my_settings.outtranslated) # writes to "my_settings.outtranslated"
     
-    # Perform alignment
+    #Perform alignment
     my_aligner = Aligner(my_settings)
     my_aligner()
     
     # Backtranslate
-    my_sequences.read_in_aligned_data("out.fasta")
-    # my_sequences.perform_backtranslation()
+    my_sequences.read_in_aligned_data(my_settings.outtransaligned)
+    #print("aligned_translated ->", my_sequences.aligned_translated)
+    my_sequences.backtranslate_sequences()
+    #print(my_sequences.aligned_nuc)
     
     # Export
-    # my_sequences.save_to_file()
+    my_sequences.save_sequences_to_file(my_settings.outfile, my_settings.outformat)
 
 main()
+
+# Example Usage For Me
+#python3 alignseq_spielman.py --inf /home/demkor62/Desktop/alignseq/practice_backtranslation/unaligned_nuc.fasta --outtranslated /home/demkor62/Desktop/alignseq/out.fasta --outtransaligned /home/demkor62/Desktop/new_alignment.fasta --outf /home/demkor62/Desktop/new_alignment.fasta 
+
+
 
 
 
