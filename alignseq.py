@@ -1,8 +1,10 @@
-from Bio import SeqIO
+from typing_extensions import Self
+from Bio import Align, SeqIO
 from Bio import AlignIO
 import argparse
 import shutil
 import os
+import sys
 from tempfile import mkstemp
 
 
@@ -11,15 +13,17 @@ def collect_input_arguments():
         Collecting input arguments at the command line for use later.
     """
 
-    parser = argparse.ArgumentParser(prog= 'Alignseq', description='Align Codon Sequences', usage='%(prog)s [options]',epilog="And that's how you make an Alignment!")
-    parser.add_argument('--inf', metavar='Infile', action='store', help='A input file of codons')
-    parser.add_argument('--outf', metavar='Outfile', action='store', help='An Output file (desired path) of codon Alignment')
-    parser.add_argument('--prog', metavar='Program', action='store', help='Desired program to Align Sequences', default='mafft')
-    parser.add_argument('--args', metavar='Arguments', action='store', help='Arguments for the program you are  running', default= "--quiet --preservecase")
-    parser.add_argument('--outtranslated', metavar='Outfile for Translated Data', action='store', help='An Output file (desired path) for translated data')
-    parser.add_argument('--outtransaligned', metavar='Outfile for Translated and Aligned Data', action='store', help='An Output file (desired path) for translated and aligned data')
-    parser.add_argument('--outformat', metavar='Output Format', action='store', help='An Output Format', default = "fasta")
-
+    parser = argparse.ArgumentParser(prog= 'Alignseq', description='Align Codon Sequences', prefix_chars='+', usage='%(prog)s [options]',epilog="And that's how you make an Alignment!")
+    parser.add_argument('+inf', metavar='Infile', action='store', help='A input file of codons')
+    parser.add_argument('+outf', metavar='Outfile', action='store', help='An Output file (desired path) of codon Alignment')
+    parser.add_argument('+prog', metavar='Program', action='store', help='Desired program to Align Sequences', default='mafft')
+    parser.add_argument('+args', metavar='Arguments', action='store', nargs='*', help='Arguments for the program you are  running', default= "--quiet --preservecase")
+    parser.add_argument('+outtranslated', metavar='Outfile for Translated Data', action='store', help='An Output file (desired path) for translated data')
+    parser.add_argument('+outtransaligned', metavar='Outfile for Translated and Aligned Data', action='store', help='An Output file (desired path) for translated and aligned data')
+    parser.add_argument('+outformat', metavar='Output Format', action='store', help='An Output Format', default = "fasta")
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
     return parser.parse_args()
 
 
@@ -38,6 +42,8 @@ class Settings:
         
         self.check_infile_exists()
         self.check_program_exists()
+        self.check_outfiles()
+        self.check_arguments()
     
     def check_infile_exists(self):
         """
@@ -51,6 +57,19 @@ class Settings:
         """
         prog_path = shutil.which(self.program)
         assert prog_path is not None, "Cannot find alignment software."
+    
+    def check_outfiles(self):
+        if self.outfile is None:
+            self.outfile = str(self.infile + '.aligned')
+        if self.outtranslated is None:
+            self.outtranslated = str(self.infile + '.translated')
+        if self.outtransaligned is None:
+            self.outtransaligned = str(self.infile + '.translated_aligned')
+    
+    def check_arguments(self):
+        if self.program == "clustalo":
+            if self.arguments == "--quiet --preservecase":
+                self.arguments = "-v"
 
 
 class Sequences:
@@ -142,15 +161,23 @@ class Aligner:
         self.program_path = shutil.which(settings.program)
         #print(settings.outtransaligned)
         #print(settings.outfile)
-        self.command = (self.program_path + " " + settings.arguments + " " +settings.outtranslated + " > " + settings.outtransaligned)
+
+class Mafft_aligner(Aligner):
+    def __init__(self, settings):
+        super().__init__(settings)
+        self.command =  " ".join([self.program_path, settings.arguments, settings.outtranslated, ">", settings.outtransaligned])
         # " ".join([self.program_path, settings.arguments, settings.outtranslated, ">", settings.outtransaligned])
-    
-    
-    
-    
-    
     def __call__(self):
         os.system(self.command)
+
+class ClustalOmega_Aligner(Aligner):
+    def __init__(self, settings):
+        super().__init__(settings)
+        self.command = (self.program_path + " -i " + settings.outtranslated + " -o " + settings.outtransaligned + " " + " ".join(settings.arguments))
+        # " ".join([self.program_path, settings.arguments, settings.outtranslated, ">", settings.outtransaligned])
+    def __call__(self):
+        os.system(self.command)
+
 
 
 def main():
@@ -163,7 +190,10 @@ def main():
     my_sequences.prepare_for_alignment(my_settings.infile, my_settings.outtranslated) # writes to "my_settings.outtranslated"
     
     #Perform alignment
-    my_aligner = Aligner(my_settings)
+    if my_settings.program == "mafft":
+        my_aligner = Mafft_aligner(my_settings)
+    else: 
+        my_aligner = ClustalOmega_Aligner(my_settings)
     my_aligner()
     
     # Backtranslate
@@ -178,61 +208,9 @@ def main():
 main()
 
 # Example Usage For Me
-#python3 alignseq.py --inf example.fasta --outtranslated outtranslated.fasta --outtransaligned outtransaligned.fasta --outf new_alignment.fasta 
-
-
-"""
-
-In Settings() make a function: check_outfiles()
-
-If the files are None (self.outtranslated is None) then define as follows...
-if this is my infile:
-infile.fasta
-
-# the outtranslated will be:
-infile.fasta.translated # outtranslated default
-
-infile.fasta.translated_aligned # outtransaligned default
-
-infile.fasta.aligned # outfile default
-
-
-ALSO DO THESE THINGS:
-+ when you run without args like python3 alignseq.py, **the help should come up** not an error
-+ make a MafftAligner child class (and ClustalOmegaAligner????) to inherit from Aligner parent. All the parent should define is self.program_path. Rest is in child.
-+ optimize write_sequences_to_file (needs argument not self)
-+ docstrings everywhere
-"""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#Mafft
+#python3 alignseq.py +inf example.fasta 
+#ClustalOmega
+# python3 alignseq.py +inf example.fasta +outf out.fasta +args -v +prog clustalo
 
 
