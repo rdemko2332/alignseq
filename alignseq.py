@@ -1,4 +1,3 @@
-#from typing_extensions import Self
 from Bio import SeqIO
 from Bio import AlignIO
 import argparse
