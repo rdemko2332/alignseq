@@ -1,5 +1,5 @@
-from typing_extensions import Self
-from Bio import Align, SeqIO
+#from typing_extensions import Self
+from Bio import SeqIO
 from Bio import AlignIO
 import argparse
 import shutil
@@ -7,6 +7,7 @@ import os
 import sys
 from tempfile import mkstemp
 
+stop_codons = ["TAG", "TAA", "TGA"]
 
 def collect_input_arguments():
     """
@@ -17,19 +18,17 @@ def collect_input_arguments():
     parser.add_argument('+inf', metavar='Infile', action='store', help='A input file of codons')
     parser.add_argument('+outf', metavar='Outfile', action='store', help='An Output file (desired path) of codon Alignment')
     parser.add_argument('+prog', metavar='Program', action='store', help='Desired program to Align Sequences', default='mafft')
-    parser.add_argument('+args', metavar='Arguments', action='store', nargs='*', help='Arguments for the program you are  running', default= "--quiet --preservecase")
+    parser.add_argument('+args', metavar='Arguments', action='store', nargs='*', help='Arguments for the program you are running. MUST BE PROVIDED IN QUOTES!!', default= "--quiet --preservecase")
     parser.add_argument('+outtranslated', metavar='Outfile for Translated Data', action='store', help='An Output file (desired path) for translated data')
     parser.add_argument('+outtransaligned', metavar='Outfile for Translated and Aligned Data', action='store', help='An Output file (desired path) for translated and aligned data')
     parser.add_argument('+outformat', metavar='Output Format', action='store', help='An Output Format', default = "fasta")
-    """
-        Will print the help menu if no arguments are passed to alignseq.py.
-    """
+    
+    # Will print the help menu if no arguments are passed to alignseq.py.
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
-    """
-        Returns arguments for use in classes.
-    """
+        
+    # Returns arguments for use in classes.
     return parser.parse_args()
 
 
@@ -79,9 +78,8 @@ class Settings:
         """
             Redefines default arguments in clustalo is specified as the program in collect_input_arguments().
         """
-        if self.program == "clustalo":
-            if self.arguments == "--quiet --preservecase":
-                self.arguments = "-v"
+        if self.program == "clustalo" and self.arguments == "--quiet --preservecase":
+            self.arguments = "-v"
 
 
 class Sequences:
@@ -103,7 +101,22 @@ class Sequences:
         self.unaligned = self.convert_sequence_list_to_dictionary(records)
         self.unaligned_translated = {}
         for record_id in self.unaligned:
-            self.unaligned_translated[record_id] = self.unaligned[record_id].translate()
+        
+            # Check sequence: Is its length a multiple of three?  len(sequence) % 3 == 0 is the goal
+            assert len(self.unaligned[record_id]) % 3 == 0, "Error: Provides sequences are not codons. Lengths are not multiples of 3."
+                
+            translated = self.unaligned[record_id].translate()
+            
+            # If there's a stop, purge it from everything.
+            if translated.endswith("*"):
+                translated = translated.rstrip("*")
+                self.unaligned[record_id] = self.unaligned[record_id][:-3]
+
+            self.unaligned_translated[record_id] = translated
+
+
+
+
 
     def write_translated_seqs_to_file(self, temporary_file):
         """
@@ -203,7 +216,7 @@ class ClustalOmega_aligner(Aligner):
     """
     def __init__(self, settings):
         """
-            Sets up ClustOmega_aligner instance. super() allows program_path to be inherited from Aligner class. Defines self.command.
+            Sets up ClustalOmega_aligner instance. super() allows program_path to be inherited from Aligner class. Defines self.command.
         """
         super().__init__(settings)
         self.command = (self.program_path + " -i " + settings.outtranslated + " -o " + settings.outtransaligned + " " + " ".join(settings.arguments))
