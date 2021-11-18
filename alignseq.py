@@ -13,14 +13,13 @@ def collect_input_arguments():
         Collecting input arguments at the command line for use later.
     """
 
-    parser = argparse.ArgumentParser(prog= 'Alignseq', description='Align Codon Sequences', prefix_chars='+', usage='%(prog)s [options]', epilog="And that's how you make an Alignment!")
-    parser.add_argument('+inf', metavar='Infile', action='store', help='A input file of codons')
-    parser.add_argument('+outf', metavar='Outfile', action='store', help='An Output file (desired path) of codon Alignment')
-    parser.add_argument('+prog', metavar='Program', action='store', help='Desired program to Align Sequences', default='mafft')
-    parser.add_argument('+args', metavar='Arguments', action='store', nargs='*', help='Arguments for the program you are running. MUST BE PROVIDED IN QUOTES!!', default= "--quiet --preservecase")
-    parser.add_argument('+outtranslated', metavar='Outfile for Translated Data', action='store', help='An Output file (desired path) for translated data')
-    parser.add_argument('+outtransaligned', metavar='Outfile for Translated and Aligned Data', action='store', help='An Output file (desired path) for translated and aligned data')
-    parser.add_argument('+outformat', metavar='Output Format', action='store', help='An Output Format', default = "fasta")
+    parser = argparse.ArgumentParser(prog= 'Alignseq', description='Align Codon Sequences', usage='%(prog)s [options]', epilog="And that's how you make an Alignment!")
+    parser.add_argument('-inf', metavar='Infile', action='store', help='A input file of codons')
+    parser.add_argument('-outf', metavar='Outfile', action='store', help='An Output file (desired path) of codon Alignment')
+    parser.add_argument('-prog', metavar='Program', action='store', help='Desired program to Align Sequences', default='mafft')
+    parser.add_argument('-outtranslated', metavar='Outfile for Translated Data', action='store', help='An Output file (desired path) for translated data')
+    parser.add_argument('-outtransaligned', metavar='Outfile for Translated and Aligned Data', action='store', help='An Output file (desired path) for translated and aligned data')
+    parser.add_argument('-outformat', metavar='Output Format', action='store', help='An Output Format', default = "fasta")
     
     # Will print the help menu if no arguments are passed to alignseq.py.
     if len(sys.argv) == 1:
@@ -35,11 +34,10 @@ class Settings:
     """
         Creating Settings class. This will take its arguments from the output of collect_input_arguments()
     """
-    def __init__(self, infile, outfile, program, arguments, outtranslated, outtransaligned, outformat):
+    def __init__(self, infile, outfile, program, outtranslated, outtransaligned, outformat):
         self.infile = infile
         self.outfile = outfile
         self.program = program
-        self.arguments = arguments
         self.outtranslated = outtranslated  
         self.outtransaligned = outtransaligned
         self.outformat = outformat
@@ -77,8 +75,12 @@ class Settings:
         """
             Redefines default arguments in clustalo is specified as the program in collect_input_arguments().
         """
-        if self.program == "clustalo" and self.arguments == "--quiet --preservecase":
+        if self.program == "clustalo":
             self.arguments = "-v"
+        if self.program == "mafft":
+            self.arguments = "--quiet --preservecase"
+        else:
+            print("Invalid Aligner Program")
 
 
 class Sequences:
@@ -186,44 +188,34 @@ class Aligner:
         Creating the Aligner class. 
     """
     def __init__(self, settings):
-        '''
-            Sets up Aligner instance. Defines the program path for the program specified in collect_input_arguments().
-        '''
+            #Sets up Aligner instance. Defines the program path for the program specified in collect_input_arguments().
         self.program_path = shutil.which(settings.program)
         
 
-class Mafft_aligner(Aligner):
+class MafftAligner(Aligner):
     """
         Creates the Mafft_aligner subclass. 
     """
     def __init__(self, settings):
-        """
-            Sets up Mafft_aligner instance. super() allows program_path to be inherited from Aligner class. Defines self.command.
-        """
+            #Sets up Mafft_aligner instance. super() allows program_path to be inherited from Aligner class. Defines self.command.
         super().__init__(settings)
         self.command =  " ".join([self.program_path, settings.arguments, settings.outtranslated, ">", settings.outtransaligned])
         # " ".join([self.program_path, settings.arguments, settings.outtranslated, ">", settings.outtransaligned])
     def __call__(self):
-        """
-            Makes the Mafft_aligner instance callable, runs self.command when it is run.
-        """
+            #Makes the Mafft_aligner instance callable, runs self.command when it is run.
         os.system(self.command)
 
-class ClustalOmega_aligner(Aligner):
+class ClustalOmegaAligner(Aligner):
     """
         Creates the ClustalOmega_aligner subclass.
     """
     def __init__(self, settings):
-        """
-            Sets up ClustalOmega_aligner instance. super() allows program_path to be inherited from Aligner class. Defines self.command.
-        """
+            #Sets up ClustalOmega_aligner instance. super() allows program_path to be inherited from Aligner class. Defines self.command.
         super().__init__(settings)
-        self.command = (self.program_path + " -i " + settings.outtranslated + " -o " + settings.outtransaligned + " " + " ".join(settings.arguments))
+        self.command = (self.program_path + " -i " + settings.outtranslated + " -o " + settings.outtransaligned + " " + settings.arguments)
         # " ".join([self.program_path, settings.arguments, settings.outtranslated, ">", settings.outtransaligned])
     def __call__(self):
-        """
-            Makes the ClustalOmega_aligner instance callable, runs self.command when it is run.
-        """
+            #Makes the ClustalOmega_aligner instance callable, runs self.command when it is run.
         os.system(self.command)
 
 
@@ -231,7 +223,7 @@ class ClustalOmega_aligner(Aligner):
 def main():
     # Collect input
     args = collect_input_arguments() 
-    my_settings = Settings(args.inf, args.outf, args.prog, args.args, args.outtranslated, args.outtransaligned, args.outformat)
+    my_settings = Settings(args.inf, args.outf, args.prog, args.outtranslated, args.outtransaligned, args.outformat)
     
     # Initialize sequences and prepare for alignment
     my_sequences = Sequences() 
@@ -239,9 +231,9 @@ def main():
     
     #Perform alignment
     if my_settings.program == "mafft":
-        my_aligner = Mafft_aligner(my_settings)
+        my_aligner = MafftAligner(my_settings)
     else: 
-        my_aligner = ClustalOmega_aligner(my_settings)
+        my_aligner = ClustalOmegaAligner(my_settings)
     my_aligner()
     
     # Backtranslate
