@@ -32,7 +32,7 @@ def collect_input_arguments():
 
 class Settings:
     """
-        Creating Settings class. This will take its arguments from the output of collect_input_arguments()
+        Creating Settings class. This will take its arguments from the output of collect_input_arguments(). Object, Value, Methods
     """
     def __init__(self, infile, outfile, program, outtranslated, outtransaligned, outformat):
         self.infile = infile
@@ -77,7 +77,7 @@ class Settings:
         """
         if self.program == "clustalo":
             self.arguments = "-v"
-        if self.program == "mafft":
+        elif self.program == "mafft":
             self.arguments = "--quiet --preservecase"
         else:
             print("Invalid Aligner Program")
@@ -229,7 +229,7 @@ def main():
     my_sequences = Sequences() 
     my_sequences.prepare_for_alignment(my_settings.infile, my_settings.outtranslated) # writes to "my_settings.outtranslated"
     
-    #Perform alignment
+    # Perform alignment
     if my_settings.program == "mafft":
         my_aligner = MafftAligner(my_settings)
     else: 
@@ -249,8 +249,8 @@ main()
 
 # Example Usage For Me
 #Mafft
-#python3 alignseq.py +inf example.fasta 
+#python3 C:\Users\rdemk\OneDrive\Desktop\alignseq\alignseq\alignseq.py -inf C:\Users\rdemk\OneDrive\Desktop\alignseq\alignseq\example.fasta
 #ClustalOmega
-# python3 alignseq.py +inf example.fasta +outf out.fasta +args -v +prog clustalo
+# python3 alignseq.py -inf example.fasta -prog clustalo
 
 
